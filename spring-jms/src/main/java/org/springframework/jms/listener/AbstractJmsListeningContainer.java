@@ -402,6 +402,33 @@ public abstract class AbstractJmsListeningContainer extends JmsDestinationAccess
 	}
 
 	/**
+	 * Create a Connection for this container.
+	 * <p>The default implementation creates a standard Connection
+	 * and prepares it through {@link #prepareConnection}.
+	 * @return the prepared Connection
+	 * @throws JMSException if the creation failed
+	 */
+	@Override
+	protected Connection createConnection() throws JMSException {
+		Connection con = super.createConnection();
+		try {
+			prepareConnection(con);
+			return con;
+		}
+		catch (JMSException ex) {
+			JmsUtils.closeConnection(con);
+			throw ex;
+		}
+	}
+
+	protected void prepareConnection(Connection con) throws JMSException {
+		String c = getClientId();
+		if (c != null) {
+			con.setClientID(c);
+		}
+	}
+
+	/**
 	 * Create a shared Connection for this container.
 	 * <p>The default implementation creates a standard Connection
 	 * and prepares it through {@link #prepareSharedConnection}.
@@ -423,17 +450,14 @@ public abstract class AbstractJmsListeningContainer extends JmsDestinationAccess
 	/**
 	 * Prepare the given Connection, which is about to be registered
 	 * as shared Connection for this container.
-	 * <p>The default implementation sets the specified client id, if any.
-	 * Subclasses can override this to apply further settings.
+	 * This implementation does nothing.
+	 * <p>Subclasses can override this to apply further settings.
 	 * @param connection the Connection to prepare
 	 * @throws JMSException if the preparation efforts failed
 	 * @see #getClientId()
 	 */
 	protected void prepareSharedConnection(Connection connection) throws JMSException {
-		String clientId = getClientId();
-		if (clientId != null) {
-			connection.setClientID(clientId);
-		}
+		// do nothing implementation
 	}
 
 	/**
