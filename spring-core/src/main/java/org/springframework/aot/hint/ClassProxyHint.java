@@ -20,24 +20,30 @@ import java.util.Arrays;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Objects;
-import java.util.stream.Collectors;
+
+import org.springframework.lang.Nullable;
 
 /**
  * A hint that describes the need for a proxy against a concrete class.
  *
  * @author Stephane Nicoll
+ * @author Brian Clozel
  * @since 6.0
  */
-public final class ClassProxyHint {
+public final class ClassProxyHint implements ConditionalHint {
 
 	private final TypeReference targetClass;
 
 	private final List<TypeReference> proxiedInterfaces;
 
+	@Nullable
+	private final TypeReference reachableType;
+
 
 	private ClassProxyHint(Builder builder) {
 		this.targetClass = builder.targetClass;
 		this.proxiedInterfaces = builder.proxiedInterfaces.stream().distinct().toList();
+		this.reachableType = builder.reachableType;
 	}
 
 	/**
@@ -55,6 +61,9 @@ public final class ClassProxyHint {
 	 * @return a builder for the hint
 	 */
 	public static Builder of(Class<?> targetClass) {
+		if (targetClass.isInterface()) {
+			throw new IllegalArgumentException("Should not be an interface: " + targetClass);
+		}
 		return of(TypeReference.of(targetClass));
 	}
 
@@ -74,6 +83,12 @@ public final class ClassProxyHint {
 		return this.proxiedInterfaces;
 	}
 
+	@Nullable
+	@Override
+	public TypeReference getReachableType() {
+		return this.reachableType;
+	}
+
 	@Override
 	public boolean equals(Object o) {
 		if (this == o) {
@@ -84,7 +99,8 @@ public final class ClassProxyHint {
 		}
 		ClassProxyHint that = (ClassProxyHint) o;
 		return this.targetClass.equals(that.targetClass)
-				&& this.proxiedInterfaces.equals(that.proxiedInterfaces);
+				&& this.proxiedInterfaces.equals(that.proxiedInterfaces)
+				&& Objects.equals(this.reachableType, that.reachableType);
 	}
 
 	@Override
@@ -102,8 +118,11 @@ public final class ClassProxyHint {
 
 		private final LinkedList<TypeReference> proxiedInterfaces = new LinkedList<>();
 
+		@Nullable
+		private TypeReference reachableType;
 
-		public Builder(TypeReference targetClass) {
+
+		Builder(TypeReference targetClass) {
 			this.targetClass = targetClass;
 		}
 
@@ -124,7 +143,19 @@ public final class ClassProxyHint {
 		 */
 		public Builder proxiedInterfaces(Class<?>... proxiedInterfaces) {
 			this.proxiedInterfaces.addAll(Arrays.stream(proxiedInterfaces)
-					.map(TypeReference::of).collect(Collectors.toList()));
+					.map(TypeReference::of).toList());
+			return this;
+		}
+
+		/**
+		 * Make this hint conditional on the fact that the specified type
+		 * can be resolved.
+		 * @param reachableType the type that should be reachable for this
+		 * hint to apply
+		 * @return {@code this}, to facilitate method chaining
+		 */
+		public Builder onReachableType(TypeReference reachableType) {
+			this.reachableType = reachableType;
 			return this;
 		}
 
@@ -132,7 +163,7 @@ public final class ClassProxyHint {
 		 * Create a {@link ClassProxyHint} based on the state of this builder.
 		 * @return a class proxy hint
 		 */
-		public ClassProxyHint build() {
+		ClassProxyHint build() {
 			return new ClassProxyHint(this);
 		}
 

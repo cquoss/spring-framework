@@ -20,6 +20,7 @@ import java.util.Arrays;
 
 import io.r2dbc.spi.Connection;
 import io.r2dbc.spi.ConnectionFactory;
+import io.r2dbc.spi.Parameters;
 import io.r2dbc.spi.Result;
 import io.r2dbc.spi.Statement;
 import io.r2dbc.spi.test.MockColumnMetadata;
@@ -28,10 +29,8 @@ import io.r2dbc.spi.test.MockRow;
 import io.r2dbc.spi.test.MockRowMetadata;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InOrder;
 import org.mockito.Mock;
-import org.mockito.junit.jupiter.MockitoExtension;
 import org.mockito.junit.jupiter.MockitoSettings;
 import org.mockito.quality.Strictness;
 import org.reactivestreams.Publisher;
@@ -65,12 +64,11 @@ import static org.mockito.BDDMockito.when;
  * @author Ferdinand Jacobs
  * @author Jens Schauder
  */
-@ExtendWith(MockitoExtension.class)
 @MockitoSettings(strictness = Strictness.LENIENT)
 class DefaultDatabaseClientUnitTests {
 
 	@Mock
-	Connection connection;
+	private Connection connection;
 
 	private DatabaseClient.Builder databaseClientBuilder;
 
@@ -137,15 +135,16 @@ class DefaultDatabaseClientUnitTests {
 		databaseClient.sql("SELECT * FROM table WHERE key = $1").bindNull(0,
 				String.class).then().as(StepVerifier::create).verifyComplete();
 
-		verify(statement).bindNull(0, String.class);
+		verify(statement).bind(0, Parameters.in(String.class));
 
 		databaseClient.sql("SELECT * FROM table WHERE key = $1").bindNull("$1",
 				String.class).then().as(StepVerifier::create).verifyComplete();
 
-		verify(statement).bindNull("$1", String.class);
+		verify(statement).bind("$1", Parameters.in(String.class));
 	}
 
 	@Test
+	@SuppressWarnings("deprecation")
 	void executeShouldBindSettableValues() {
 		Statement statement = mockStatementFor("SELECT * FROM table WHERE key = $1");
 
@@ -155,13 +154,13 @@ class DefaultDatabaseClientUnitTests {
 				Parameter.empty(String.class)).then().as(
 						StepVerifier::create).verifyComplete();
 
-		verify(statement).bindNull(0, String.class);
+		verify(statement).bind(0, Parameters.in(String.class));
 
 		databaseClient.sql("SELECT * FROM table WHERE key = $1").bind("$1",
 				Parameter.empty(String.class)).then().as(
 						StepVerifier::create).verifyComplete();
 
-		verify(statement).bindNull("$1", String.class);
+		verify(statement).bind("$1", Parameters.in(String.class));
 	}
 
 	@Test
@@ -173,7 +172,7 @@ class DefaultDatabaseClientUnitTests {
 		databaseClient.sql("SELECT * FROM table WHERE key = :key").bindNull("key",
 				String.class).then().as(StepVerifier::create).verifyComplete();
 
-		verify(statement).bindNull(0, String.class);
+		verify(statement).bind(0, Parameters.in(String.class));
 	}
 
 	@Test
@@ -196,6 +195,7 @@ class DefaultDatabaseClientUnitTests {
 	}
 
 	@Test
+	@SuppressWarnings("deprecation")
 	void executeShouldBindValues() {
 		Statement statement = mockStatementFor("SELECT * FROM table WHERE key = $1");
 
@@ -204,12 +204,12 @@ class DefaultDatabaseClientUnitTests {
 		databaseClient.sql("SELECT * FROM table WHERE key = $1").bind(0,
 				Parameter.from("foo")).then().as(StepVerifier::create).verifyComplete();
 
-		verify(statement).bind(0, "foo");
+		verify(statement).bind(0, Parameters.in("foo"));
 
 		databaseClient.sql("SELECT * FROM table WHERE key = $1").bind("$1",
 				"foo").then().as(StepVerifier::create).verifyComplete();
 
-		verify(statement).bind("$1", "foo");
+		verify(statement).bind("$1", Parameters.in("foo"));
 	}
 
 	@Test
@@ -221,7 +221,7 @@ class DefaultDatabaseClientUnitTests {
 		databaseClient.sql("SELECT * FROM table WHERE key = :key").bind("key",
 				"foo").then().as(StepVerifier::create).verifyComplete();
 
-		verify(statement).bind(0, "foo");
+		verify(statement).bind(0, Parameters.in("foo"));
 	}
 
 	@Test
